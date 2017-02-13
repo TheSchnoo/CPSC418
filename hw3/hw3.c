@@ -298,7 +298,18 @@ int main(int argc, char **argv) {
     // now, we'll check the time, run the trials, and check the time again.
     getrusage(RUSAGE_SELF,  &r0); /* record starting time */
     for(int i = 0; i < args.n_trial; i++) {
+
         // WRITE the loop-body to call merge_sort_list or merge_sort_array
+        if(args.data_struct == LIST) list_sort = merge_sort_list(list_unsort);
+        else {
+            int *array2 = malloc(args.n * sizeof(int));     // New array for random values
+            memcpy(array2, array, args.n * sizeof(int));    // Copy array into array2
+//            printf("%s", "before sort:");
+//            print_array(array2, args.n);
+            merge_sort_array(array2, args.n);               // Merge sort the array
+//            printf("%s", "after sort:");
+//            print_array(array2, args.n);
+        }
     }
     getrusage(RUSAGE_SELF,  &r1);  /* record the ending time */
     t_elapsed =   (r1.ru_utime.tv_sec - r0.ru_utime.tv_sec)

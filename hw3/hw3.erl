@@ -65,7 +65,7 @@ time(NWorkers, NData, NTrial) ->
   % workers:update(W, data2, misc:cut(Data, W)), % Split data
   % io:format("~w~n", [time_it:t(fun() -> primes_seq(W, NData, data) end, 10)]),
   [{mean, MeanSeq}, {std, StdSeq}] = time_it:t( fun() -> primes_seq(W, NData, data), lists:append(workers:retrieve(W, data)) end, NTrial), % Timing the sequential version
-  [{mean, MeanPar}, {std, StdPar}] = time_it:t( fun() -> primes(W, NData, data), lists:append(workers:retrieve(W, data)) end, NTrial), % Timing the parallel version
+  [{mean, MeanPar}, {std, StdPar}] = time_it:t( fun() -> primes(W, NData, data2), lists:append(workers:retrieve(W, data2)) end, NTrial), % Timing the parallel version
   wtree:reap(W),
   [{seq, MeanSeq, StdSeq}, {par, MeanPar, StdPar}]
   .
