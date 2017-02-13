@@ -305,6 +305,7 @@ int main(int argc, char **argv) {
             int *array2 = malloc(args.n * sizeof(int));     // New array for random values
             memcpy(array2, array, args.n * sizeof(int));    // Copy array into array2
             merge_sort_array(array2, args.n);               // Merge sort the array
+            free(array2);
         }
     }
     getrusage(RUSAGE_SELF,  &r1);  /* record the ending time */
