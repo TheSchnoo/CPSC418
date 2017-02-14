@@ -1,7 +1,7 @@
 -module(hw3).
 
 % the exports required for the homework problems.
--export([primes/3, sum_inv_twin_primes/2, speedup/3, speedup_sum/3, time_sum/3, time_sum_par/3]).
+-export([primes/3, sum_inv_twin_primes/2, speedup/3, speedup_sum/3, time_sum/3, time_sum_par/3, prime_time_seq/3, prime_time_par/3]).
 
 % export some functions that I found handy to access while developing my solution.
 -export([primes/1, primes/2, sum_inv_twin_primes/1, twin_primes/1]).
@@ -47,6 +47,7 @@ leaf(ProcState, SrcKey) ->
 
 combine({LHead, LLast, LPrimes}, ok) when is_list(LPrimes) -> {LHead, LLast, LPrimes};
 combine(ok, {RHead, RLast, RPrimes}) when is_list(RPrimes) -> {RHead, RLast, RPrimes};
+combine(ok, ok) -> ok;
 combine({LHead, LLast, LPrimes}, {RHead, RLast, RPrimes}) when is_list(LPrimes), is_list(RPrimes) ->
   if (LLast == RHead - 2) ->
     {LHead, RLast, lists:append([LPrimes, RPrimes, [LLast, RHead]])};
@@ -71,6 +72,20 @@ time_sum(NWorkers, NData, NTrial) ->
   [{mean, MeanSeq}, {std, _}] = time_it:t( fun() -> sum_inv_twin_primes_seq(W, primes2) end, NTrial), % Timing the sequential version
   wtree:reap(W),
   MeanSeq
+  .
+
+prime_time_seq(NWorkers, NData, NTrial) ->
+  W = wtree:create(NWorkers),
+  [{mean, MeanSeq}, {std, StdSeq}] = time_it:t( fun() -> primes_seq(W, NData, data), wtree:barrier(W) end, NTrial), % Timing the sequential version
+  wtree:reap(W),
+  MeanSeq
+  .
+
+prime_time_par(NWorkers, NData, NTrial) ->
+  W = wtree:create(NWorkers),
+  [{mean, MeanPar}, {std, StdPar}] = time_it:t( fun() -> primes(W, NData, data2), wtree:barrier(W) end, NTrial), % Timing the parallel version
+  wtree:reap(W),
+  MeanPar
   .
 
 speedup_sum(NWorkers, NData, NTrial) -> 
