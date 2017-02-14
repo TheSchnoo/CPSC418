@@ -1,7 +1,7 @@
 -module(hw3).
 
 % the exports required for the homework problems.
--export([primes/3, sum_inv_twin_primes/2, speedup/3, primes_seq/3, times/3]).
+-export([primes/3, sum_inv_twin_primes/2, speedup/3, speedup_sum/3, time_sum/3, time_sum_par/3]).
 
 % export some functions that I found handy to access while developing my solution.
 -export([primes/1, primes/2, sum_inv_twin_primes/1, twin_primes/1]).
@@ -32,40 +32,59 @@ primes_seq(W, N, DstKey) ->
 %   distributed list for the workers of W.  SrcKey is the key associated
 %   with this list of twin primes.
 sum_inv_twin_primes(W, SrcKey) ->
-  % Here's a sequential versin.
-  % You need to replace the body of this function with a parallel version.
-
-  % Sequential
-  % lists:sum([1/X || X <- twin_primes(lists:append(workers:retrieve(W, SrcKey)))]).
-
-  Leaf = fun(ProcState) -> workers:get(ProcState, SrcKey) end,
   wtree:reduce(W, 
-    Leaf,
-    fun(Left, Right) -> combine(Right, Left) end,
-    fun(X) -> sum_inv_twin_primes(twin_primes(X)) end)
-
-% TRY PUTTING INVERSE PRIMES IN COMBINE?
+    fun(ProcState) -> leaf(ProcState, SrcKey) end,
+    fun(Left, Right) -> combine(Left, Right) end,
+    fun({_, _, Twins}) -> sum_inv_twin_primes(Twins) end)
   .
 
-times(NWorkers, NData, NTrial) ->
+leaf(ProcState, SrcKey) ->
+  Primes = workers:get(ProcState, SrcKey),
+  if (Primes == []) -> ok;
+    true ->
+      {hd(Primes), lists:nth(length(Primes), Primes), twin_primes(Primes)} end
+  .
+
+combine({LHead, LLast, LPrimes}, ok) when is_list(LPrimes) -> {LHead, LLast, LPrimes};
+combine(ok, {RHead, RLast, RPrimes}) when is_list(RPrimes) -> {RHead, RLast, RPrimes};
+combine({LHead, LLast, LPrimes}, {RHead, RLast, RPrimes}) when is_list(LPrimes), is_list(RPrimes) ->
+  if (LLast == RHead - 2) ->
+    {LHead, RLast, lists:append([LPrimes, RPrimes, [LLast, RHead]])};
+    true -> {LHead, RLast, lists:append(LPrimes, RPrimes)}
+  end.
+
+sum_inv_twin_primes_seq(W, SrcKey) ->
+% Sequential
+lists:sum([1/X || X <- twin_primes(lists:append(workers:retrieve(W, SrcKey)))]).
+% 
+time_sum_par(NWorkers, NData, NTrial) ->
   W = wtree:create(NWorkers),
-  Data = lists:sort([rand:uniform(NData * NData) || _ <- lists:seq(1, NData)]), % Create data
-  % workers:update(W, data, misc:cut(Data, W)),
-  % workers:update(W, data2, misc:cut(Data, W)), % Split data
-  % io:format("~w~n", [time_it:t(fun() -> primes_seq(W, NData, data) end, 10)]),
-  [{mean, MeanSeq}, {std, StdSeq}] = time_it:t( fun() -> primes(W, NData, data) end, NTrial),
+  primes(W, NData, primes),
+  [{mean, MeanPar}, {std, _}] = time_it:t( fun() -> sum_inv_twin_primes(W, primes) end, NTrial), % Timing the parallel version
+  wtree:reap(W),
+  MeanPar
+  .
+
+time_sum(NWorkers, NData, NTrial) ->
+  W = wtree:create(NWorkers),
+  primes(W, NData, primes2),
+  [{mean, MeanSeq}, {std, _}] = time_it:t( fun() -> sum_inv_twin_primes_seq(W, primes2) end, NTrial), % Timing the sequential version
+  wtree:reap(W),
   MeanSeq
   .
+
+speedup_sum(NWorkers, NData, NTrial) -> 
+  [{seq, MeanSeq, _StdSeq}, {par, MeanPar, _StdPar}] = time_sum(NWorkers, NData, NTrial),
+  [{seq, MeanSeq}, {par, MeanPar}, {speedup, MeanSeq/MeanPar}].
 
 % PLEASE NOTE: time/3 and speedup/3 functions based heavily on Tutorial 5 discussions
 time(NWorkers, NData, NTrial) ->
   W = wtree:create(NWorkers),
-  Data = lists:sort([rand:uniform(NData * NData) || _ <- lists:seq(1, NData)]), % Create data
   % workers:update(W, data, misc:cut(Data, W)),
   % workers:update(W, data2, misc:cut(Data, W)), % Split data
   % io:format("~w~n", [time_it:t(fun() -> primes_seq(W, NData, data) end, 10)]),
-  [{mean, MeanSeq}, {std, StdSeq}] = time_it:t( fun() -> primes_seq(W, NData, data), lists:append(workers:retrieve(W, data)) end, NTrial), % Timing the sequential version
-  [{mean, MeanPar}, {std, StdPar}] = time_it:t( fun() -> primes(W, NData, data2), lists:append(workers:retrieve(W, data2)) end, NTrial), % Timing the parallel version
+  [{mean, MeanSeq}, {std, StdSeq}] = time_it:t( fun() -> primes_seq(W, NData, data), wtree:barrier(W) end, NTrial), % Timing the sequential version
+  [{mean, MeanPar}, {std, StdPar}] = time_it:t( fun() -> primes(W, NData, data2), wtree:barrier(W) end, NTrial), % Timing the parallel version
   wtree:reap(W),
   [{seq, MeanSeq, StdSeq}, {par, MeanPar, StdPar}]
   .
@@ -73,17 +92,11 @@ time(NWorkers, NData, NTrial) ->
 speedup(NWorkers, NData, NTrial) -> 
   [{seq, MeanSeq, _StdSeq}, {par, MeanPar, _StdPar}] = time(NWorkers, NData, NTrial),
   [{seq, MeanSeq}, {par, MeanPar}, {speedup, MeanSeq/MeanPar}].
-  
-
-combine(Left, []) -> Left;
-combine([], Right) -> Right;
-combine(Left, Right) -> lists:append(Left, Right).
 
 sum_inv_twin_primes([]) -> 0;
 sum_inv_twin_primes(N) when is_list(N) ->
   lists:sum([1/X || X <- N]);
 
-sum_inv_twin_primes(N) when is_number(N) -> 1/N;
 sum_inv_twin_primes(N) when is_integer(N), 0 =< N ->
   lists:sum([1/TP || TP <- twin_primes(N)]).
 
