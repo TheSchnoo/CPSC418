@@ -7,6 +7,7 @@
 -export([primes_seq/3, sum_inv_twin_primes_seq/2, prime_time_seq/3, prime_time_par/3, 
   time_sum_seq/3, time_sum_par/3, speedup_primes/3, speedup_sum/3]).
 
+
 % export some functions that I found handy to access while developing my solution.
 -export([primes/1, primes/2, sum_inv_twin_primes/1, twin_primes/1]).
 
@@ -42,27 +43,24 @@ sum_inv_twin_primes(W, SrcKey) ->
   wtree:reduce(W, 
     fun(ProcState) -> leaf(ProcState, SrcKey) end,
     fun(Left, Right) -> combine(Left, Right) end,
-    fun({_, _, Twins}) -> Twins end)
+    fun({_, _, Twins}) -> sum_inv_twin_primes(Twins) end)
   .
 
 leaf(ProcState, SrcKey) ->
   Primes = workers:get(ProcState, SrcKey),
   if (Primes == []) -> ok;
     true ->
-      {hd(Primes), lists:nth(length(Primes), Primes), sum_inv_twin_primes(twin_primes(Primes))} end
+      {hd(Primes), lists:nth(length(Primes), Primes), twin_primes(Primes)} end
   .
 
-combine({LHead, LLast, LPrimes}, ok) when is_number(LPrimes) -> {LHead, LLast, LPrimes};
-combine(ok, {RHead, RLast, RPrimes}) when is_number(RPrimes) -> {RHead, RLast, RPrimes};
-
-% combine({LHead, LLast, LPrimes}, ok) when is_list(LPrimes) -> {LHead, LLast, LPrimes};
-% combine(ok, {RHead, RLast, RPrimes}) when is_list(RPrimes) -> {RHead, RLast, RPrimes};
+combine({LHead, LLast, LPrimes}, ok) when is_list(LPrimes) -> {LHead, LLast, LPrimes};
+combine(ok, {RHead, RLast, RPrimes}) when is_list(RPrimes) -> {RHead, RLast, RPrimes};
 combine(ok, ok) -> ok;
-combine({LHead, LLast, LPrimes}, {RHead, RLast, RPrimes}) when is_number(LPrimes), is_number(RPrimes) ->
+combine({LHead, LLast, LPrimes}, {RHead, RLast, RPrimes}) when is_list(LPrimes), is_list(RPrimes) ->
   if (LLast == RHead - 2) ->
     % If the last element of Left and first element of Right are twin primes, include them in the list of twin primes 
-    {LHead, RLast, LPrimes + RPrimes + 1/LLast + 1/RHead};
-    true -> {LHead, RLast, LPrimes + RPrimes}
+    {LHead, RLast, lists:append([LPrimes, RPrimes, [LLast, RHead]])};
+    true -> {LHead, RLast, lists:append(LPrimes, RPrimes)}
   end.
 
 
