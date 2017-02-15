@@ -28,6 +28,14 @@
 #include <strings.h>
 #include <sys/resource.h>
 
+// I'll just declare random myself rather than tyring to figure out what
+//   arcane combinations of flags gcc needs to enable that part of stdlib.h
+//   (the flags will probably change next week anyway).
+extern long int random (void) __THROW;
+
+// likewise for strcmp
+extern int strcmp(const char *, const char *);
+
 // constants for describing the test to run
 #define LIST 1
 #define ARRAY 2
@@ -69,8 +77,9 @@ List *merge(List *x, List *y) {
     return(first);
 }
 
-// a is a list, n is the length of a
-//   Return a sorted into ascending order.
+// data is a list, n is the length of a
+//   Return data sorted into ascending order.
+//   Note: this modifies the structure of data, i.e. it modifies the original.
 List *merge_sort_2(List *data, int n) {
     // divide List *a into two, roughly equal length pieces
     List *first_half = data, *x = data;
@@ -87,7 +96,7 @@ List *merge_sort_2(List *data, int n) {
 }
 
 // data is a list.
-//   Return a sorted into ascending order.
+//   Return data sorted into ascending order.
 //   We re-arrange the pointers of data; so the original list is lost.
 List *merge_sort_list(List *data) {
     int n = 0;
@@ -99,6 +108,9 @@ List *merge_sort_list(List *data) {
 }
 
 // create a list of n random integers
+// Note (Feb. 12): my intention was that if init_data==ASCENDING,
+//   the list would be in ascending order.  Obviously, it's descending.
+//   That's OK.  That should work just as well.
 List *list_rand(int n, int init_data) {
     // create a random list of n elements
     List *a = NULL, *b;
@@ -130,7 +142,7 @@ void print_array(int *data, int n) {
 //   40 or so elements if the array is huge.  Calling
 //     print_array(array_to_print, min(array_length, 40));
 //   does that.
-int min(a, b) {
+int min(int a, int b) {
   return(a <= b ? a : b);
 }
 
@@ -294,6 +306,8 @@ int main(int argc, char **argv) {
     //
     // tl;dr;
     // WRITE the code to provide random data on each run of n_trial runs.
+    
+    // Random data handled in loop below
 
     // now, we'll check the time, run the trials, and check the time again.
     getrusage(RUSAGE_SELF,  &r0); /* record starting time */
