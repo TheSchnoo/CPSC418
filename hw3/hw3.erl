@@ -54,6 +54,7 @@ combine(ok, {RHead, RLast, RPrimes}) when is_list(RPrimes) -> {RHead, RLast, RPr
 combine(ok, ok) -> ok;
 combine({LHead, LLast, LPrimes}, {RHead, RLast, RPrimes}) when is_list(LPrimes), is_list(RPrimes) ->
   if (LLast == RHead - 2) ->
+    % If the last element of Left and first element of Right are twin primes, include them in the list of twin primes 
     {LHead, RLast, lists:append([LPrimes, RPrimes, [LLast, RHead]])};
     true -> {LHead, RLast, lists:append(LPrimes, RPrimes)}
   end.
@@ -61,7 +62,7 @@ combine({LHead, LLast, LPrimes}, {RHead, RLast, RPrimes}) when is_list(LPrimes),
 
 % Sequential version of summing inverse twin primes, used for testing
 sum_inv_twin_primes_seq(W, SrcKey) ->
-lists:sum([1/X || X <- twin_primes(lists:append(workers:retrieve(W, SrcKey)))]).
+  lists:sum([1/X || X <- twin_primes(lists:append(workers:retrieve(W, SrcKey)))]).
 
 
 % Timing functions below, exported and used for testing
