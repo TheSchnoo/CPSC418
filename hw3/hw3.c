@@ -320,7 +320,7 @@ int main(int argc, char **argv) {
             for(int j = 0; j < args.n; j++) {
                 array2[j] = array[j];                       // Copy the random array into a new array to merge
             }
-            merge_sort_array(array2, args.n);               // Merge sort the array
+            merge_sort_array(array2, args.n);               // Mergesort the array
             free(array2);
         }
     }

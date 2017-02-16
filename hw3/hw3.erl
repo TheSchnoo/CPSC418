@@ -70,7 +70,7 @@ sum_inv_twin_primes_seq(W, SrcKey) ->
 
 
 % Timing functions below, exported and used for testing
-% Please note, the timing and speedup functions draw heavily on Tutorial 5 discussions
+% Please note, the timing and speedup functions draw heavily on discussions from Tutorial 5
 prime_time_seq(NWorkers, NData, NTrial) ->
   W = wtree:create(NWorkers),
   [{mean, MeanSeq}, {std, _StdSeq}] = time_it:t( fun() -> primes_seq(W, NData, data), wtree:barrier(W) end, NTrial), % Timing the sequential version
