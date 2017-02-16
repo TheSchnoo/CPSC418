@@ -85,19 +85,15 @@ prime_time_par(NWorkers, NData, NTrial) ->
   MeanPar
   .
 
-time_sum_par(NWorkers, NData, NTrial) ->
-  W = wtree:create(NWorkers),
-  primes(W, NData, primes),
-  [{mean, MeanPar}, {std, _}] = time_it:t( fun() -> sum_inv_twin_primes(W, primes), wtree:barrier(W) end, NTrial), % Timing the parallel version of sum
-  wtree:reap(W),
+time_sum_par(W, SrcKey, NTrial) ->
+  [{mean, MeanPar}, {std, _}] = time_it:t( fun() -> sum_inv_twin_primes(W, SrcKey) end, NTrial), % Timing the parallel version of sum
+  wtree:barrier(W),
   MeanPar
   .
 
-time_sum_seq(NWorkers, NData, NTrial) ->
-  W = wtree:create(NWorkers),
-  primes(W, NData, primes2),
-  [{mean, MeanSeq}, {std, _}] = time_it:t( fun() -> sum_inv_twin_primes_seq(W, primes2), wtree:barrier(W) end, NTrial), % Timing the sequential version of sum
-  wtree:reap(W),
+time_sum_seq(W, SrcKey, NTrial) ->
+  [{mean, MeanSeq}, {std, _}] = time_it:t( fun() -> sum_inv_twin_primes_seq(W, SrcKey), wtree:barrier(W) end, NTrial), % Timing the sequential version of sum
+  wtree:barrier(W),
   MeanSeq
   .
 
@@ -106,10 +102,15 @@ speedup_primes(NWorkers, NData, NTrial) ->
   MeanPrimesPar = prime_time_par(NWorkers, NData, NTrial),
   [{seq, MeanPrimesSeq}, {par, MeanPrimesPar}, {speedup, MeanPrimesSeq/MeanPrimesPar}].
 
-speedup_sum(NWorkers, NData, NTrial) -> 
-  MeanSumSeq = time_sum_seq(NWorkers, NData, NTrial),
-  MeanSumPar = time_sum_seq(NWorkers, NData, NTrial),
-  [{seq, MeanSumSeq}, {par, MeanSumPar}, {speedup, MeanSumSeq/MeanSumPar}].
+speedup_sum(NWorkers, NData, NTrial) ->
+  W = wtree:create(NWorkers),
+  primes(W, NData, primes),
+  wtree:barrier(W),
+  MeanSumSeq = time_sum_seq(W, primes, NTrial),
+  MeanSumPar = time_sum_par(W, primes, NTrial),
+  wtree:reap(W),
+  [{seq, MeanSumSeq}, {par, MeanSumPar}, {speedup, MeanSumSeq/MeanSumPar}]
+  .
 
 
 % Added two cases to sum_inv_twin_primes/1
